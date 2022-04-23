@@ -13,7 +13,6 @@ from train_utils import train_eval_utils as utils
 def create_model(num_classes):
     import torchvision
     from torchvision.models.feature_extraction import create_feature_extractor
-
     # vgg16
     backbone = torchvision.models.vgg16_bn(pretrained=False)
     # print(backbone)
@@ -29,6 +28,9 @@ def create_model(num_classes):
     # # out = backbone(torch.rand(1, 3, 224, 224))
     # # print(out["0"].shape)
     # backbone.out_channels = 1024
+
+    backbone = torchvision.models.resnet101(pretrained=True)
+
 
     # EfficientNetB0
     # backbone = torchvision.models.efficientnet_b0(pretrained=False)

@@ -1,26 +1,19 @@
-"""
-该脚本用于调用训练好的模型权重去计算验证集/测试集的COCO指标
-以及每个类别的mAP(IoU=0.5)
-"""
-from torchvision import models
-models.resnet101(pretrained=)
+import transforms
 import os
 import json
-
 import torch
-import torchvision
-
-from tqdm import tqdm
-import numpy as np
-from network_files import FasterRCNN, AnchorsGenerator
-import transforms
-from network_files import FasterRCNN
-# from backbone import resnet50_fpn_backbone
-#from my_dataset import VOCDataSet
-from backbone import MobileNetV2
 from icme_dataset_2 import CocoDetection
-from train_utils import get_coco_api_from_dataset, CocoEvaluator
+from network_files import FasterRCNN
+from backbone import resnet50_fpn_backbone
+from tqdm import tqdm
 
+def create_model(num_classes):
+
+    # 注意，这里的norm_layer要和训练脚本中保持一致
+    backbone = resnet50_fpn_backbone(norm_layer=torch.nn.BatchNorm2d)
+    model = FasterRCNN(backbone=backbone, num_classes=num_classes, rpn_score_thresh=0.5)
+
+    return model
 
 def main(parser_data):
     device = torch.device(parser_data.device if torch.cuda.is_available() else "cpu")
@@ -52,20 +45,16 @@ def main(parser_data):
                                              num_workers=8,
                                              collate_fn=test_dataset.collate_fn)
 
-    backbone = MobileNetV2(weights_path="./backbone/mobilenet_v2.pth").features
-    backbone.out_channels = 1280  # 设置对应backbone输出特征矩阵的channels
+    # create model
+    model = create_model(num_classes=51)
 
-    anchor_generator = AnchorsGenerator(sizes=((32, 64, 128, 256, 512),),
-                                        aspect_ratios=((0.5, 1.0, 2.0),))
+    # load train weights
+    weights_path = "/liu/code/d2l-zh/pycharm-local/faster_rcnn/multi_train/model_45.pth"
+    assert os.path.exists(weights_path), "{} file dose not exist.".format(weights_path)
+    model.load_state_dict(torch.load(weights_path, map_location='cpu')["model"])
+    model.to(device)
 
-    roi_pooler = torchvision.ops.MultiScaleRoIAlign(featmap_names=['0'],  # 在哪些特征层上进行roi pooling
-                                                    output_size=[7, 7],  # roi_pooling输出特征矩阵尺寸
-                                                    sampling_ratio=2)  # 采样率
-
-    model = FasterRCNN(backbone=backbone,
-                       num_classes=51,
-                       rpn_anchor_generator=anchor_generator,
-                       box_roi_pool=roi_pooler)
+    cpu_device = torch.device("cpu")
 
     # 载入你自己训练好的模型权重
     weights_path = parser_data.weights_path
@@ -76,10 +65,6 @@ def main(parser_data):
     model.to(device)
 
     # evaluate on the test dataset
-    coco = get_coco_api_from_dataset(test_dataset)
-    iou_types = ["bbox"]
-    coco_evaluator = CocoEvaluator(coco, iou_types)
-    cpu_device = torch.device("cpu")
     icme_result = []
     model.eval()
     with torch.no_grad():
@@ -89,17 +74,18 @@ def main(parser_data):
 
             # inference
             outputs = model(image)
-
             outputs = [{k: v.to(cpu_device) for k, v in t.items()} for t in outputs]
-            res = {target["image_id"].item(): output for target, output in zip(targets, outputs)}
-            coco_evaluator.update(res)
             for target, output in zip(targets, outputs):
+                output["boxes"][:, [2, 3]] = output["boxes"][:, [2, 3]] - output["boxes"][:, [0, 1]]
                 boxes = output["boxes"].numpy().tolist()
                 labels = output["labels"].numpy().tolist()
                 scores = output["scores"].numpy().tolist()
                 i = 0
                 for score in scores:
-                    if score > 0.3:
+                    if score > 0.1:
+                        assert (len(boxes) == len(scores)), "{} error.".format(target["image_id"].item())
+                        assert (len(boxes) == len(boxes)), "{} error.".format(target["image_id"].item())
+
                         icme_result.append({"image_id": target["image_id"].item(), "category_id": labels[i], "bbox": boxes[i], "score": scores[i]})
                         print("i is {}".format(i))
                     i =i +1
@@ -110,8 +96,7 @@ def main(parser_data):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__)
 
     # 使用设备类型
     parser.add_argument('--device', default='cuda', help='device')
@@ -123,7 +108,7 @@ if __name__ == "__main__":
     parser.add_argument('--data-path', default='/liu/icme/dataset/val/images/', help='dataset root')
 
     # 训练好的权重文件
-    parser.add_argument('--weights-path', default='/liu/code/d2l-zh/pycharm-local/faster_rcnn/save_weights/mobile-model-24.pth', type=str, help='training weights')
+    parser.add_argument('--weights-path', default='/liu/code/d2l-zh/pycharm-local/faster_rcnn/multi_train/model_45.pth', type=str, help='training weights')
 
     # batch size
     parser.add_argument('--batch_size', default=1, type=int, metavar='N',

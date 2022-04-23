@@ -49,16 +49,16 @@ def main():
     print("using {} device.".format(device))
 
     # create model
-    model = create_model(num_classes=21)
+    model = create_model(num_classes=51)
 
     # load train weights
-    weights_path = "./save_weights/model.pth"
+    weights_path = "/liu/code/d2l-zh/pycharm-local/faster_rcnn/multi_train/model_54.pth"
     assert os.path.exists(weights_path), "{} file dose not exist.".format(weights_path)
     model.load_state_dict(torch.load(weights_path, map_location='cpu')["model"])
     model.to(device)
 
     # read class_indict
-    label_json_path = './pascal_voc_classes.json'
+    label_json_path = './coco91_indices.json'
     assert os.path.exists(label_json_path), "json file {} dose not exist.".format(label_json_path)
     with open(label_json_path, 'r') as f:
         class_dict = json.load(f)
@@ -66,7 +66,7 @@ def main():
     category_index = {str(v): str(k) for k, v in class_dict.items()}
 
     # load image
-    original_img = Image.open("./test.jpg")
+    original_img = Image.open("/liu/icme/dataset/val/images/0a1b613e33eeb40477531bd1953608ef.jpg")
 
     # from pil image to tensor, do not normalize image
     data_transform = transforms.Compose([transforms.ToTensor()])

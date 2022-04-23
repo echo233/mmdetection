@@ -44,6 +44,7 @@ class FasterRCNNBase(nn.Module):
 
     def forward(self, images, targets=None):
         # type: (List[Tensor], Optional[List[Dict[str, Tensor]]]) -> Tuple[Dict[str, Tensor], List[Dict[str, Tensor]]]
+        # 会将图片统一为同样大小的batch
         """
         Arguments:
             images (list[Tensor]): images to be processed
