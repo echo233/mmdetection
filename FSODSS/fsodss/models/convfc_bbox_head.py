@@ -4,7 +4,7 @@ from mmcv.cnn import ConvModule
 
 from mmdet.models.builder import HEADS
 from mmdet.models.utils import build_linear_layer
-from .bbox_head import TriBBoxHead
+from .tri_bbox_head import TriBBoxHead
 
 
 @HEADS.register_module()

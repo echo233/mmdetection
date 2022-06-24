@@ -3,7 +3,7 @@ import torch
 from mmcv.runner import force_fp32
 
 from mmdet.models.builder import ROI_EXTRACTORS
-from .base_roi_extractor import TriBaseRoIExtractor  # 修改的
+from .tri_base_roi_extractor import TriBaseRoIExtractor  # 修改的
 
 
 @ROI_EXTRACTORS.register_module()
@@ -18,7 +18,7 @@ class TriSingleRoIExtractor(TriBaseRoIExtractor):
         roi_layer (dict): Specify RoI layer type and arguments.
         out_channels (int): Output channels of RoI layers.
         featmap_strides (List[int]): Strides of input feature maps.
-        finest_scale (int): Scale threshold of mapping to level 0. Default: 56.
+        finest_scale (int): Scale threshold of mapping to level 0. Default: 56. 映射到level 0的scale threadhold
         init_cfg (dict or list[dict], optional): Initialization config dict.
             Default: None
     """
