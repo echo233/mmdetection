@@ -1,11 +1,7 @@
 import numpy as np
 import random
 import cv2
-import os
-import xml.etree.ElementTree as ET
 
-ann_path = '/liu/code/d2l-zh/pycharm-local/data/VOCdevkit/VOC2007/Annotations/'
-# 想法：通过语义相关性，把最类似的图像沾到原始位置，
 class copy_paste(object):
     def __init__(self, thresh=32*32, prob=0.5, copy_times=3, epochs=30, all_objects=False, one_object=False):
         self.thresh = thresh
@@ -16,9 +12,6 @@ class copy_paste(object):
         self.one_object = one_object
 
     def issmallobject(self, h, w):
-        print(h)
-        print(w)
-        print(self.thresh)
         if h*w <= self.thresh:
             return True
         else:
@@ -41,12 +34,12 @@ class copy_paste(object):
             if self.compute_overlap(new_l, l): return False
         return True
 
-    def create_copy_label(self, h, w, l, labels):  # 参数为图像的宽高，粘贴对象的标注，整个图像的标注
+    def create_copy_label(self, h, w, l, labels):
         l = l.astype(np.int)
         l_h, l_w = l[4] - l[2], l[3] - l[1]
         for epoch in range(self.epochs):
             random_x, random_y = np.random.randint(int(l_w / 2), int(w - l_w / 2)), \
-                                 np.random.randint(int(l_h / 2), int(h - l_h / 2))  # 随机找一个位置放
+                                 np.random.randint(int(l_h / 2), int(h - l_h / 2))
             xmin, ymin = random_x - l_w / 2, random_y - l_h / 2
             xmax, ymax = xmin + l_w, ymin + l_h
             if xmin < 0 or xmax > w or ymin < 0 or ymax > h:
@@ -87,7 +80,7 @@ class copy_paste(object):
             copy_object_num = 1
 
         # 在 0~l-1 之间随机取copy_object_num个数
-        random_list = random.sample(range(l), copy_object_num)  # list[2,1,8]
+        random_list = random.sample(range(l), copy_object_num)
         label_idx_of_small_object = [small_object_list[idx] for idx in random_list]
         select_label = labels[label_idx_of_small_object, :]
 
@@ -97,76 +90,20 @@ class copy_paste(object):
             if self.issmallobject(l_h, l_w) is False: continue
 
             for i in range(self.copy_time):
-                new_label = self.create_copy_label(h, w, l, labels)  # 粘贴的新对象标注
+                new_label = self.create_copy_label(h, w, l, labels)
                 if new_label is not None:
-                    image = self.add_patch_in_img(new_label, l, image)  # 更新原始图像中粘贴的对象处的信息
-                    labels = np.append(labels, new_label.reshape(1, -1), axis=0)  # 更新原始图像的标注信息
+                    image = self.add_patch_in_img(new_label, l, image)
+                    labels = np.append(labels, new_label.reshape(1, -1), axis=0)
 
         return image, labels
 
-def get_simClass(fake_name):
-    items = []
-    for f in os.listdir(ann_path):
-        tree = ET.parse(ann_path+f)
-        root = tree.getroot()
-        result = root.findall('object')
-        bool_num = 0
-        for obj in result:
-            if obj.find('name').text == fake_name:
-                items.append(f.split('.')[0])
-            # else:
-            #     root.remove(obj)  # 需要移除吗
-    return items
-
-def create_copy_label()
 def main():
-    fake_name ='dog'
-    class_item = '/liu/code/d2l-zh/pycharm-local/data/VOCdevkit/VOC2007/ImageSets/Main/' + fake_name + '_trainval.txt'  # 从其中随机取一些
-    items = get_simClass(fake_name)
 
-    # < size >
-    #     < width > 500 < / width >
-    #     < height > 333 < / height >
-    #     < depth > 3 < / depth >
-    # < / size >
-    random_list = random.sample(range(len(items)), min(len(items),10)) # 取100个该类别的目标,返回值是索引
-    for i in random_list:
-        ann_path+items[i]+'.xml'
-        tree = ET.parse(ann_path+items[i]+'.xml')
-
-        for i, obj in enumerate(tree.findall('object')):
-            r = {
-                'image_id': items[i],
-                'height': int(tree.findall('./size/height')[0].text),
-                'width': int(tree.findall('./size/width')[0].text),
-                'idx': i,
-            }
-            cls_ = obj.find('name').text
-            bbox = obj.find('bndbox')
-            bbox = [
-                float(bbox.find(x).text)
-                for x in ['xmin', 'ymin', 'xmax', 'ymax']
-            ]
-            bbox[0] -= 1.0
-            bbox[1] -= 1.0
-
-            # instances = [{
-            #     'category_id': classnames.index(cls),
-            #     'bbox': bbox,
-            # }]
-            # r['annotations'] = instances
-            # dicts_.append(r)
-
-
-    h, w, l, labels = 800, 800,  # 原始图片信息都可以得到,l原图左上右下和标签，labels新图像中对象的位置
-    create_copy_label(h, w, l, labels)
-    print(1)
-    # image = np.ndarray((128,128,3))
-    # labels = np.ones((6,5))
-    # ttt = copy_paste(thresh=32*32, prob=0.5, copy_times=3, epochs=30, all_objects=False, one_object=False)
-    # ttt(image,labels)
-    # random_list = random.sample(range(10), 3)
-    # print(random_list)
+    image = np.ndarray((128,128,3))
+    labels = np.ones((6,5))
+    ttt = copy_paste(thresh=32*32, prob=0.5, copy_times=3, epochs=30, all_objects=False, one_object=False)
+    ttt(image,labels)
+    random_list = random.sample(range(10), 3)
+    print(random_list)
 if __name__ == '__main__':
     main()
-
